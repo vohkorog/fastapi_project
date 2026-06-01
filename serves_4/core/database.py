@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
-from database.Config import confing
+from core.config import config
 from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
-    url = confing.DATABASE_URL,
+    url = config.DATABASE_URL,
     echo = True
 )
 

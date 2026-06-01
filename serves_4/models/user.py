@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import text
+from sqlalchemy import text, String
 from typing import Annotated
 
 create_at = Annotated[datetime, mapped_column(server_default=text("TIMEZONE('utc', now())"))]
@@ -8,15 +8,15 @@ create_at = Annotated[datetime, mapped_column(server_default=text("TIMEZONE('utc
 class Base(DeclarativeBase):
     pass
 
-class TaskModel(Base):
+class User(Base):
 
-    __tablename__= 'Album'
+    __tablename__= 'users'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    description: Mapped[str] = mapped_column()
-    status: Mapped[str] = mapped_column()
+    email: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    password_hash: Mapped[str] = mapped_column(String)
     create_at: Mapped[create_at]
-    exec_at: Mapped[datetime] = mapped_column(nullable=True)
 
 
 
