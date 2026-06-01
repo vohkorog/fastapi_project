@@ -23,9 +23,7 @@ def get_password_hash(password: str) -> str:
     return hashed.decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Проверяет пароль с помощью bcrypt напрямую
-    """
+
     # Конвертируем в байты
     plain_bytes = plain_password.encode('utf-8')
     hashed_bytes = hashed_password.encode('utf-8')
@@ -53,7 +51,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return encoded_jwt
 
 def decode_token(token: str) -> Optional[dict]:
-    """Декодирует JWT токен"""
     try:
         payload = jwt.decode(
             token, 

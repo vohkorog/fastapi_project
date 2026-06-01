@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict
 from pydantic import BaseModel, EmailStr
 
 class User():
