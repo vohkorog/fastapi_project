@@ -8,7 +8,7 @@ create_at = Annotated[datetime, mapped_column(server_default=text("TIMEZONE('utc
 class Base(DeclarativeBase):
     pass
 
-class User(Base):
+class UserModel(Base):
 
     __tablename__= 'users'
 
@@ -17,6 +17,7 @@ class User(Base):
     login: Mapped[str] = mapped_column(String(100), unique=True)
     password_hash: Mapped[str] = mapped_column(String)
     create_at: Mapped[create_at]
+    mark: Mapped[str] = mapped_column(String(10), default='Active')
 
 
 

@@ -5,7 +5,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-from models.user import Base, User
+from models.user import Base, UserModel
 from core.database import engine, session_factory
 from sqlalchemy import insert, text, select
 from datetime import datetime
@@ -18,9 +18,9 @@ def create_model():
 def delete_model():
     Base.metadata.drop_all(engine)
 
-def register_user(login: str, email: str, password: str) -> User:
+def register_user(login: str, email: str, password: str) -> UserModel:
     hashed_password = get_password_hash(password)
-    user = User(email = email,
+    user = UserModel(email = email,
                 login = login,
                 password_hash = hashed_password)
     
@@ -32,9 +32,9 @@ def register_user(login: str, email: str, password: str) -> User:
 
 def get_user_by_login(login: str):
     with session_factory() as session:
-        return session.query(User).filter(User.login == login).first()
+        return session.query(UserModel).filter(UserModel.login == login).first()
 
-def authenticate_user(login: str, password: str) -> User | None:
+def authenticate_user(login: str, password: str) -> UserModel | None:
     user = get_user_by_login(login)
     if not user:
         return None
@@ -46,6 +46,9 @@ def login_user(login: str, password: str):
     user = authenticate_user(login, password)
     if not user:
         return {"success": False, "message": "Неверное имя пользователя или пароль"}
+    if user.mark == 'No active':
+        return {"success": False, "message": "Пользователь с такими данными удален"}
+    
     token_data = {"sub": str(user.id), "login": user.login}
     access_token = create_access_token(token_data)
     return {
@@ -66,7 +69,7 @@ def verify_token(token: str):
         return {"success": False, "message": "Невалидный токен"}
     
     with session_factory() as session:
-        user = session.query(User).filter(User.id == int(user_id)).first()
+        user = session.query(UserModel).filter(UserModel.id == int(user_id)).first()
 
         if not user:
             return {"success": False, "message": "Пользователь не найден"}
@@ -84,16 +87,44 @@ def get_current_user_from_token(token: str):
     if not result["success"]:
         return None
     with session_factory() as session:
-        user = session.query(User).filter(User.id == result["user_id"]).first()
+        user = session.query(UserModel).filter(UserModel.id == result["user_id"]).first()
 
-    return user
+        return user
 
 def delete_acc_by_id(id: int):
     with session_factory() as session:
-        user = session.get(User, id)
+        user = session.get(UserModel, id)
         session.delete(user)
         session.commit()
         return user
+    
+
+def delete_acc_by_token(token: str):
+    verify_user_token = verify_token(token)
+
+    if not verify_user_token:
+        print('Проблемы с удалением аккаунта')
+    else:
+        with session_factory() as session:
+            user = session.query(UserModel).filter(UserModel.id == verify_user_token["user_id"]).first()
+            session.delete(user)
+            session.commit()
+            return user
+        
+def cahnge_mark(token: str):
+    verify_user_token = verify_token(token)
+    if not verify_user_token:
+        print('Проблемы с удалением аккаунта')
+    else:
+        with session_factory() as session:
+            user = session.query(UserModel).filter(UserModel.id == verify_user_token["user_id"]).first()  
+            result = session.get(UserModel, user.id)
+            result.mark = 'No active'
+            session.commit()
+            return result
+
 
 if __name__ == '__main__':
+    
     ...
+

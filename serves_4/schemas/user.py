@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Dict
 from pydantic import BaseModel, EmailStr
 
-class User():
+class UserScheme():
     id: int
     email: EmailStr
     username: str
@@ -11,27 +11,27 @@ class User():
     created_at: datetime = datetime.now()
     refresh_token: str | None = None
 
-class UserCreate(BaseModel):
+class UserCreateScheme(BaseModel):
     email: EmailStr
     username: str
     password: str
 
-class UserLogin(BaseModel):
+class UserLoginScheme(BaseModel):
     username: str
     password: str
 
-class UserInDB(User):
+class UserInDBScheme(UserScheme):
     pass
 
-class Token(BaseModel):
+class TokenScheme(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
-class TokenData(BaseModel):
+class TokenDataScheme(BaseModel):
     username: str
     token_type: str  # "access" or "refresh"
 
-users_db: Dict[int, User] = {}
-users_by_username: Dict[str, User] = {}
-users_by_email: Dict[str, User] = {}
+users_db: Dict[int, UserScheme] = {}
+users_by_username: Dict[str, UserScheme] = {}
+users_by_email: Dict[str, UserScheme] = {}
