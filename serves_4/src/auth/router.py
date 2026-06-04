@@ -5,10 +5,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import uvicorn
 from fastapi import FastAPI, Cookie
-from schemas.user import UserLoginScheme
-from serveces.func import db, user_db
+from src.auth.services import db, user_db
 from fastapi.responses import JSONResponse, RedirectResponse
-
+from src.auth.schemas import UserLoginScheme
 
 app = FastAPI()
 
@@ -38,5 +37,3 @@ def login(data: UserLoginScheme):
     return response
    
 
-if __name__ == '__main__':
-    uvicorn.run('auth:app', host= '127.0.0.1', port= 8000, reload= True)

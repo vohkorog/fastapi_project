@@ -37,7 +37,3 @@ class TokenScheme(BaseModel):
 class TokenDataScheme(BaseModel):
     username: str
     token_type: str  # "access" or "refresh"
-
-users_db: Dict[int, UserScheme] = {}
-users_by_username: Dict[str, UserScheme] = {}
-users_by_email: Dict[str, UserScheme] = {}

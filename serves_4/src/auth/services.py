@@ -4,12 +4,11 @@ import os
 # Добавляем родительскую папку (serves_4) в путь
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-
-from models.user import Base, UserModel
-from core.database import engine, session_factory
-from sqlalchemy import insert, text, select
+from src.models import Base, UserModel, AlbumModel
+from src.database import engine, session_factory
 from datetime import datetime
-from core.security import get_password_hash, verify_password, create_access_token, decode_token
+from src.security import get_password_hash, verify_password, create_access_token, decode_token
+from sqlalchemy import select
 
 class db:
     @staticmethod
@@ -135,11 +134,6 @@ class user_db:
             result.mark = 'No active'
             session.commit()
             return result
+
+            
     
-
-
-if __name__ == '__main__':
-   """  token = user_db.login_user('anna', 'admin123')['access_token']
-    print(token) """
-   token = user_db.login_user('anna', 'admin123')['access_token']
-   print(token)

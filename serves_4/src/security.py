@@ -4,7 +4,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from dotenv import load_dotenv
-from core.config import config
+from src.config import config
 
 load_dotenv()
 
