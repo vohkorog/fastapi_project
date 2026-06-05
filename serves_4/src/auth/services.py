@@ -93,16 +93,6 @@ class user_db:
                 "login": user.login,
                 "email": user.email
             }
-
-    @staticmethod
-    def get_current_user_from_token_bd(token: str):
-
-        result = user_db.verify_token(token)
-        if not result["success"]:
-            return None
-        with session_factory() as session:
-            user = session.query(UserModel).filter(UserModel.id == result["user_id"]).first()
-            return user
     
     @staticmethod
     def get_current_user_from_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -125,29 +115,12 @@ class user_db:
             session.delete(user)
             session.commit()
             return user
-    
-
-    @staticmethod
-    def delete_acc_by_token(token: str):
-        try:
-            user = user_db.get_current_user_from_token_bd(token)
-        except:
-            print('проблема с токеном')
-        with session_factory() as session:
-            session.delete(user)
-            session.commit()
-        return user
-        
+            
     
     @staticmethod        
-    def cahnge_mark(token: str):
-        try:
-            user = user_db.get_current_user_from_token_bd(token)
-        except:
-            print('проблема с токеном')
-
+    def cahnge_mark(user_id: int):
         with session_factory() as session:
-            result = session.get(UserModel, user.id)
+            result = session.get(UserModel, user_id)
             result.mark = 'No active'
             session.commit()
             return result
