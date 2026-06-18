@@ -9,17 +9,18 @@ class AlbumsCreateScheme(BaseModel):
 class AlbumsDeleteScheme(BaseModel):
     id: int
 
-
-class PhotoBase(BaseModel):
+class PhotoScheme(BaseModel):
+    id: int
+    album_id: int
+    uploaded_at: datetime
     filename: str
     file_path: str
     file_size: int
     content_type: str
-
-class PhotoScheme(PhotoBase):
-    id: int
-    album_id: int
-    uploaded_at: datetime
     
     class Config:
         from_attributes = True
+
+
+class PhotoDeleteScheme(BaseModel):
+    id: int 

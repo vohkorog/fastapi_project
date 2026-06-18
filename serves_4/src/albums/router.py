@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File
-from src.albums.schemas import AlbumsCreateScheme, AlbumsDeleteScheme, PhotoScheme
+from src.albums.schemas import AlbumsCreateScheme, AlbumsDeleteScheme, PhotoScheme, PhotoDeleteScheme
 from src.auth.services import user_db
 from src.albums.services import album_db
 
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/albums", tags=["albums"])
 def root():
     return f'root album'
 
-@router.post('/create_albums')
+@router.post('/create_albums', response_model = AlbumsCreateScheme)
 def create_albums(data: AlbumsCreateScheme, 
                   current_user: dict = Depends(user_db.get_current_user_from_token)):
     
@@ -37,10 +37,16 @@ def delete_album(data: AlbumsDeleteScheme,
     album = album_db.delete_user_album(user_id = current_user['id'], id= data.id)
     return f'Альбом успешно удален {album}'
 
-@router.post('/albums/{album_id}/photos', response_model=PhotoScheme)
+@router.post('/{album_id}/photos', response_model=PhotoScheme)
 def add_photo(albums_id: int, 
               current_user: dict = Depends(user_db.get_current_user_from_token), 
               file: UploadFile = File(...)):
     
     photo = album_db.upload_photo(user_id=current_user['id'], album_id=albums_id, file = file)
     return photo
+
+@router.delete('/delete_photos', response_model=PhotoDeleteScheme)
+def delete_photo(data: PhotoDeleteScheme,
+                 current_user: dict = Depends(user_db.get_current_user_from_token)):
+    album_db.delete_photo(photo_id=data.id, user_id=current_user['id'])
+    return f'Фото с id {data.id} удалено'

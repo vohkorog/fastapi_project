@@ -8,62 +8,11 @@ import shutil
 from pathlib import Path
 
 # Папка для загрузки фото
-BASE_DIR = Path(__file__).resolve().parent.parent  # на уровень выше
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent  # на уровень выше
 UPLOAD_DIR = BASE_DIR / "uploads" / "photos"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-
-class album_db:
-
-    ALLOWED_TYPES = {
-        "image/jpeg": ".jpg",
-        "image/png": ".png",
-        "image/gif": ".gif",
-        "image/webp": ".webp"}
- 
-    @staticmethod
-    def create_album(title: str,
-                     user_id: int,  
-                     description: str | None = None, 
-                     ):
-
-        album = AlbumModel(
-        title = title, 
-        description = description,
-        user_id = user_id
-        )
-        with session_factory() as session:
-            session.add_all([album])
-            session.commit()
-            session.refresh(album)
-        return album
-    
-    @staticmethod
-    def get_album(user_id: int, album_id: int):
-        with session_factory() as session:
-            query = select(AlbumModel).where(AlbumModel.id == album_id, AlbumModel.user_id == user_id)
-            result = session.execute(query)
-            album = result.scalar_one_or_none()
-            return album
-    
-    @staticmethod
-    def delete_user_album(user_id: int, id: int):
-        album = album_db.get_album(user_id=user_id, album_id= id)
-        
-        with session_factory() as session:
-            session.delete(album)
-            session.commit()
-            return album
-
-    @staticmethod        
-    def get_user_albums(user_id: int):
-        
-        with session_factory() as session:
-            query = (select(AlbumModel).where(AlbumModel.user_id == user_id))
-            result = session.execute(query)
-            album = result.scalars().all()
-            return album
-    
+class photo_db:
     @staticmethod 
     def generate_filename(extension: str) -> str:
         return f"{uuid.uuid4()}{extension}"
@@ -105,3 +54,84 @@ class album_db:
         except Exception:
             file_path.unlink(missing_ok=True)  # откатываем файл с диска при ошибке БД
             raise
+
+    @staticmethod
+    def delete_photo(photo_id: int, user_id: int):
+        photo = album_db.get_photo(photo_id =photo_id, user_id=user_id)
+        # Удаляем файл
+        photo_path = Path(photo.file_path)
+        if photo_path.exists():
+            photo_path.unlink()
+        with session_factory() as session:        
+            session.delete(photo)
+            session.commit()
+
+    @staticmethod
+    def get_photo(photo_id: int, user_id: int):
+        with session_factory() as session:
+            # Получаем фото с проверкой прав через альбом
+            query = select(PhotoModel).join(AlbumModel).where(
+                PhotoModel.id == photo_id,
+                AlbumModel.user_id == user_id
+            )
+            result = session.execute(query)
+            photo = result.scalar_one_or_none()
+            if photo is None:
+                raise HTTPException(status_code=404, detail="Фото не найдено")
+            return photo
+
+
+
+class album_db:
+    ALLOWED_TYPES = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/gif": ".gif",
+        "image/webp": ".webp"}
+ 
+    @staticmethod
+    def create_album(title: str,
+                     user_id: int,  
+                     description: str | None = None, 
+                     ):
+
+        album = AlbumModel(
+        title = title, 
+        description = description,
+        user_id = user_id
+        )
+        with session_factory() as session:
+            session.add_all([album])
+            session.commit()
+            session.refresh(album)
+        return album
+    
+    @staticmethod
+    def get_album(user_id: int, album_id: int):
+        with session_factory() as session:
+            query = select(AlbumModel).where(AlbumModel.id == album_id, AlbumModel.user_id == user_id)
+            result = session.execute(query)
+            album = result.scalar_one_or_none()
+            return album
+    
+    @staticmethod
+    def delete_user_album(user_id: int, id: int):
+        album = album_db.get_album(user_id=user_id, album_id= id)
+        
+        if album is None:
+            raise HTTPException(status_code=404, detail="Альбом не найден")
+        
+        with session_factory() as session:
+            session.delete(album)
+            session.commit()
+            return album
+
+    @staticmethod        
+    def get_user_albums(user_id: int):
+        
+        with session_factory() as session:
+            query = (select(AlbumModel).where(AlbumModel.user_id == user_id))
+            result = session.execute(query)
+            album = result.scalars().all()
+            return album
+    
