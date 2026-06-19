@@ -1,5 +1,5 @@
 
-from src.models import AlbumModel, PhotoModel
+from src.models import AlbumModel, PhotoModel, MemberModel
 from src.database import session_factory
 from sqlalchemy import select
 from fastapi import UploadFile, HTTPException
@@ -65,7 +65,7 @@ class photo_db:
 
     @staticmethod
     def delete_photo(photo_id: int, user_id: int):
-        photo = album_db.get_photo(photo_id =photo_id, user_id=user_id)
+        photo = photo_db.get_photo(photo_id =photo_id, user_id=user_id)
         # Удаляем файл
         photo_path = Path(photo.file_path)
         if photo_path.exists():
@@ -103,7 +103,6 @@ class photo_db:
 
 class album_db:
     
- 
     @staticmethod
     def create_album(title: str,
                      user_id: int,  
@@ -149,5 +148,32 @@ class album_db:
             result = session.execute(query)
             album = result.scalars().all()
             return album
+        
+    @staticmethod
+    def shared_album(shared_album_id: int, shared_user_id: int, ownre_id: int):
+        album = album_db.get_album(user_id=ownre_id, album_id= shared_album_id)
+
+        if album is None:
+            raise HTTPException(status_code=404, detail="Альбом не найден")
+        
+        with session_factory() as session:
+            existing = session.execute(
+            select(MemberModel).where(
+                MemberModel.album_id == shared_album_id,
+                MemberModel.user_id == shared_user_id
+                )).scalar_one_or_none()
+        
+            if existing:
+                raise HTTPException(status_code=400, detail="Пользователь уже имеет доступ")
+            
+            member = MemberModel(
+                user_id = shared_user_id,
+                album_id = shared_album_id
+            )
+
+            session.add(member)
+            session.commit()
+            return member
+
         
    

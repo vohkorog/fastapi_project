@@ -24,3 +24,4 @@ class PhotoScheme(BaseModel):
 
 class PhotoDeleteScheme(BaseModel):
     id: int 
+

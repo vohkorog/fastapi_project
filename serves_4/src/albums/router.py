@@ -69,3 +69,11 @@ def get_photo_file(photo_id: int, current_user: dict = Depends(user_db.get_curre
         media_type=photo.content_type,
         filename=photo.filename
     )
+
+@router.post('/share_album')
+def share_album(shared_user_id: int, 
+                shared_album_id: int, 
+                current_user: dict = Depends(user_db.get_current_user_from_token)):
+    
+    member = album_db.shared_album(shared_album_id=shared_album_id, shared_user_id=shared_user_id, ownre_id=current_user['id'])
+    return member
