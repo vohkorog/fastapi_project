@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import APIRouter
-from src.auth.services import db, user_db
+from src.auth.services import user_db
 from fastapi.responses import JSONResponse, RedirectResponse
 from src.auth.schemas import UserLoginScheme, UserCreateScheme
 
@@ -32,9 +32,7 @@ def sigin(data: UserCreateScheme):
         password=data.password
     )    
     return f'Здравствуйте, {user.login}'
-""" 
-@router.psot('delete_albums')
-def delete_albums(): """
+
 
     
    

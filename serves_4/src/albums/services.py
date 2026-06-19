@@ -13,6 +13,14 @@ UPLOAD_DIR = BASE_DIR / "uploads" / "photos"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 class photo_db:
+
+    ALLOWED_TYPES = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/gif": ".gif",
+        "image/webp": ".webp"}
+    
+
     @staticmethod 
     def generate_filename(extension: str) -> str:
         return f"{uuid.uuid4()}{extension}"
@@ -24,11 +32,11 @@ class photo_db:
         if album is None:
             raise HTTPException(status_code=404, detail="Альбом не найден")
         
-        if file.content_type not in album_db.ALLOWED_TYPES:
+        if file.content_type not in photo_db.ALLOWED_TYPES:
             raise HTTPException(status_code=400, detail="Неверный тип файла")
 
-        extension = album_db.ALLOWED_TYPES[file.content_type]
-        safe_filename = album_db.generate_filename(extension)
+        extension = photo_db.ALLOWED_TYPES[file.content_type]
+        safe_filename = photo_db.generate_filename(extension)
         file_path = UPLOAD_DIR / safe_filename
 
         try:
@@ -79,15 +87,22 @@ class photo_db:
             if photo is None:
                 raise HTTPException(status_code=404, detail="Фото не найдено")
             return photo
+        
+    @staticmethod
+    def get_album_photo(album_id: int, user_id: int):
+        album = album_db.get_album(album_id=album_id, user_id=user_id)
+        if album is None:
+            raise HTTPException(status_code=404, detail="Альбом не найден")
+
+        with session_factory() as session:
+            query = select(PhotoModel).where(PhotoModel.album_id == album_id)
+            photos = session.execute(query).scalars().all()
+            return photos
 
 
 
 class album_db:
-    ALLOWED_TYPES = {
-        "image/jpeg": ".jpg",
-        "image/png": ".png",
-        "image/gif": ".gif",
-        "image/webp": ".webp"}
+    
  
     @staticmethod
     def create_album(title: str,
@@ -134,4 +149,5 @@ class album_db:
             result = session.execute(query)
             album = result.scalars().all()
             return album
-    
+        
+   

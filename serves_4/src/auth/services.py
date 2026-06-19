@@ -13,14 +13,6 @@ from sqlalchemy import select
 
 security = HTTPBearer()
 
-class db:
-    @staticmethod
-    def create_model():
-        Base.metadata.create_all(engine)
-
-    @staticmethod
-    def delete_model():
-        Base.metadata.drop_all(engine)
 
 class user_db:
 
