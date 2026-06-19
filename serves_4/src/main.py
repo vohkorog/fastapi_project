@@ -27,6 +27,7 @@ def root():
             }
     }
 
+
 @app.post('/drop_all', description='drop and recreate all table')
 def drop_all():
     db.delete_model()

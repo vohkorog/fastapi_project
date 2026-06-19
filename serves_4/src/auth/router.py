@@ -36,4 +36,7 @@ def sigin(data: UserCreateScheme):
 
     
    
-
+@router.get('/all_users')
+def all_users():
+    users = user_db.get_all_users()
+    return users

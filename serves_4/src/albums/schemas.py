@@ -9,6 +9,13 @@ class AlbumsCreateScheme(BaseModel):
 class AlbumsDeleteScheme(BaseModel):
     id: int
 
+class GetAlbums(BaseModel):
+    id: int
+    title: str 
+    description: str | None = None
+    create_at: datetime
+    user_id: int
+
 class PhotoScheme(BaseModel):
     id: int
     album_id: int
@@ -24,4 +31,5 @@ class PhotoScheme(BaseModel):
 
 class PhotoDeleteScheme(BaseModel):
     id: int 
+
 

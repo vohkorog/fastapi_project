@@ -126,8 +126,22 @@ class album_db:
             query = select(AlbumModel).where(AlbumModel.id == album_id, AlbumModel.user_id == user_id)
             result = session.execute(query)
             album = result.scalar_one_or_none()
-            return album
-    
+            
+            if album:
+                return session.get(AlbumModel, album_id)
+            else: None
+
+            member = session.execute(
+            select(MemberModel).where(
+                MemberModel.album_id == album_id,
+                MemberModel.user_id == user_id
+                )).scalar_one_or_none()
+        
+            if member:
+                return session.get(AlbumModel, album_id)
+            
+            return None
+            
     @staticmethod
     def delete_user_album(user_id: int, id: int):
         album = album_db.get_album(user_id=user_id, album_id= id)
@@ -174,6 +188,33 @@ class album_db:
             session.add(member)
             session.commit()
             return member
+        
+    @staticmethod
+    def get_shared_album(shared_album_id: int, shared_user_id: int):
+        
+        with session_factory() as session:
+            members = session.execute(
+            select(MemberModel).where(MemberModel.album_id == shared_album_id, MemberModel.user_id == shared_user_id)
+        ).scalars().all()
+            if members:
+                query = select(AlbumModel).where(AlbumModel.id == shared_album_id)
+                result = session.execute(query)
+                albums = result.scalar_one_or_none()
+                return albums
+            else: raise HTTPException(status_code=404, detail="Пользователь не имеет доступ к альбому")
 
+    @staticmethod
+    def get_all_shared_album(shared_user_id: int):
+        with session_factory() as session:
+            members = session.execute(
+            select(MemberModel).where(MemberModel.user_id == shared_user_id)
+        ).scalars().all()
+            if members:
+                query = select(AlbumModel).where(AlbumModel.id == MemberModel.album_id)
+                result = session.execute(query)
+                albums = result.scalars().all()
+                return albums
+            else: raise HTTPException(status_code=404, detail="Пользователь не имеет доступ к альбому")
+            
         
    

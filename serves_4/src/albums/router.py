@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import FileResponse
-from src.albums.schemas import AlbumsCreateScheme, AlbumsDeleteScheme, PhotoScheme, PhotoDeleteScheme
+from src.albums.schemas import AlbumsCreateScheme, AlbumsDeleteScheme, PhotoScheme, PhotoDeleteScheme, GetAlbums
 from src.auth.services import user_db
 from src.albums.services import album_db, photo_db
 
@@ -54,7 +54,7 @@ def delete_photo(data: PhotoDeleteScheme,
     return f'Фото с id {data.id} удалено'
 
 
-@router.get('/get_photos_alum')
+@router.get('/get_photos_album')
 def get_photos_alum(album_id: int, 
                     current_user: dict = Depends(user_db.get_current_user_from_token)):
     photos = photo_db.get_album_photo(album_id=album_id, user_id=current_user['id'])
@@ -70,10 +70,23 @@ def get_photo_file(photo_id: int, current_user: dict = Depends(user_db.get_curre
         filename=photo.filename
     )
 
-@router.post('/share_album')
-def share_album(shared_user_id: int, 
+@router.post('/set_share_album')
+def set_share_album(shared_user_id: int, 
                 shared_album_id: int, 
                 current_user: dict = Depends(user_db.get_current_user_from_token)):
     
-    member = album_db.shared_album(shared_album_id=shared_album_id, shared_user_id=shared_user_id, ownre_id=current_user['id'])
-    return member
+    album_db.shared_album(shared_album_id=shared_album_id, shared_user_id=shared_user_id, ownre_id=current_user['id'])
+    return f'Альбом с id - {shared_album_id} для пользователя {shared_user_id} успешно присвоен'
+
+@router.get('/get_shared_albums')
+def get_shared_albums(
+    shared_album_id: int,
+    current_user: dict = Depends(user_db.get_current_user_from_token)):
+    
+    album = album_db.get_shared_album(shared_album_id=shared_album_id, shared_user_id=current_user['id'])
+    return album
+
+@router.get('/get_all_shared_albums')
+def get_all_shared_albums(current_user: dict = Depends(user_db.get_current_user_from_token)):
+    albums = album_db.get_all_shared_album(shared_user_id=current_user['id'])
+    return albums
