@@ -1,4 +1,4 @@
-
+import sys
 from src.models import AlbumModel, PhotoModel, MemberModel
 from src.database import session_factory
 from sqlalchemy import select
@@ -204,12 +204,12 @@ class album_db:
     def get_all_shared_album(shared_user_id: int):
         with session_factory() as session:
             members = session.execute(
-            select(MemberModel).where(MemberModel.user_id == shared_user_id)
-        ).scalars().all()
-            if members:
-                albums = session.execute(select(AlbumModel).where(AlbumModel.id == MemberModel.album_id)).scalars().all()
-                return albums
-            else: raise HTTPException(status_code=404, detail="Пользователь не имеет доступ к альбому")
-            
-        
-   
+            select(MemberModel).where(MemberModel.user_id == shared_user_id)).scalars().all()
+
+            if not members:
+                raise HTTPException(status_code=404, detail="Пользователь не имеет доступ к альбому")
+
+            else: 
+                album_ids = [member.album_id for member in members]
+                albums = session.execute(select(AlbumModel).where(AlbumModel.id.in_(album_ids))).scalars().all()
+                return albums           
