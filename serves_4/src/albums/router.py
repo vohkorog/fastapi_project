@@ -56,14 +56,14 @@ def delete_photo(albums_id: int,
     return f'Фото с id {photo_id} удалено'
 
 
-@router.get('/{albums_id}', summary="Получение метаданных всех фото у абльбома")
+@router.get('/{album_id}', summary="Получение метаданных всех фото у абльбома")
 def get_photos_alum(album_id: int, 
                     current_user: dict = Depends(user_db.get_current_user_from_token)):
     """Получение метаданных всех фото по id альбома у авторезированного пользователя"""
     photos = photo_db.get_album_photo(album_id=album_id, user_id=current_user['id'])
     return photos
 
-@router.get('/{albums_id}/photos/{photo_id}/file', summary="Получение изображение фото")
+@router.get('/{album_id}/photos/{photo_id}/file', summary="Получение изображение фото")
 def get_photo_file(photo_id: int, album_id: int, current_user: dict = Depends(user_db.get_current_user_from_token)):
     """Получение изображения фото по id у авторезированного пользователя"""
     photo = photo_db.get_photo(photo_id=photo_id, album_id=album_id, user_id=current_user['id'])

@@ -362,6 +362,28 @@ body {
 .toast.error { background: var(--danger); }
 @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
+/* user list in share modal */
+.user-list-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.user-list-item:last-child { border-bottom: none; }
+.user-list-item:hover { background: var(--bg); }
+.user-list-item.selected { background: var(--accent-light); }
+.user-list-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--text); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; flex-shrink: 0;
+}
+.user-list-info { flex: 1; min-width: 0; }
+.user-list-name { font-size: 13px; font-weight: 500; }
+.user-list-email { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-list-check { font-size: 16px; color: var(--accent); display: none; }
+.user-list-item.selected .user-list-check { display: block; }
+
 /* shared albums section */
 .section-divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 .section-subtitle { font-size: 16px; font-weight: 600; margin-bottom: 1rem; color: var(--muted); }
@@ -514,43 +536,18 @@ body {
 <div class="modal-overlay" id="modal-share">
   <div class="modal">
     <div class="modal-title">Поделиться альбомом</div>
-
-    <div class="share-tabs">
-      <div class="share-tab active" onclick="switchShareTab('give')" id="stab-give">Дать доступ</div>
-      <div class="share-tab" onclick="switchShareTab('link')" id="stab-link">Ссылка</div>
+    <div class="share-info">
+      Выберите пользователя, которому хотите открыть доступ к альбому «<span id="share-album-name"></span>».
     </div>
 
-    <!-- Give access tab -->
-    <div id="share-give">
-      <div class="share-info">
-        Введите ID пользователя, которому хотите открыть доступ к альбому «<span id="share-album-name"></span>».
-      </div>
-      <div class="form-group">
-        <label class="form-label">ID пользователя</label>
-        <input class="form-input" id="share-user-id" type="number" placeholder="например, 42" />
-      </div>
-      <div id="share-error" class="error-msg"></div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeModal('modal-share')">Отмена</button>
-        <button class="btn btn-primary" onclick="doShareAlbum()">Открыть доступ</button>
-      </div>
-    </div>
+    <div id="share-users-loading" style="text-align:center;padding:1rem;color:var(--muted);font-size:13px">Загрузка пользователей...</div>
 
-    <!-- Share link tab -->
-    <div id="share-link" style="display:none">
-      <div class="share-info">
-        Скопируйте ссылку-приглашение и отправьте её другому пользователю. После перехода по ней он попадёт сразу на этот альбом (если авторизован).
-      </div>
-      <div class="form-group">
-        <label class="form-label">Ссылка</label>
-        <div style="display:flex;gap:8px">
-          <input class="form-input" id="share-link-val" readonly style="font-family:monospace;font-size:12px" />
-          <button class="btn btn-secondary btn-sm" onclick="copyShareLink()">Копировать</button>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeModal('modal-share')">Закрыть</button>
-      </div>
+    <div id="share-users-list" style="display:none;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:1rem;"></div>
+
+    <div id="share-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-share')">Отмена</button>
+      <button class="btn btn-primary" id="btn-do-share" onclick="doShareAlbum()" disabled>Открыть доступ</button>
     </div>
   </div>
 </div>
@@ -570,6 +567,7 @@ let token = null;
 let currentUser = null;
 let currentAlbum = null;
 let isSharedAlbum = false;
+let selectedShareUserId = null;
 
 // ── UTILS ──────────────────────────────────────────
 
@@ -585,10 +583,7 @@ function showAuthError(msg) {
   const el = document.getElementById('auth-error');
   el.textContent = msg; el.classList.add('show');
 }
-
-function clearAuthError() {
-  document.getElementById('auth-error').classList.remove('show');
-}
+function clearAuthError() { document.getElementById('auth-error').classList.remove('show'); }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -607,6 +602,10 @@ async function api(method, path, body = null, isForm = false) {
   const r = await fetch(BASE + path, opts);
   if (r.status === 401) { doLogout(); throw new Error('Unauthorized'); }
   return r;
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── AUTH TABS ──────────────────────────────────────
@@ -704,17 +703,19 @@ async function loadAlbums() {
   const grid = document.getElementById('albums-grid');
   grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
   try {
-    const r = await api('GET', '/albums/get_albums');
+    // новый URL: GET /albums/
+    const r = await api('GET', '/albums/');
     const albums = await r.json().catch(() => []);
     renderAlbums(grid, Array.isArray(albums) ? albums : [], false);
-  } catch(e) {}
+  } catch(e) { grid.innerHTML = ''; renderAlbums(grid, [], false); }
 }
 
 async function loadSharedAlbums() {
   const grid = document.getElementById('shared-albums-grid');
   grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
   try {
-    const r = await api('GET', '/albums/get_all_shared_albums');
+    // новый URL: GET /albums/share/
+    const r = await api('GET', '/albums/share/');
     if (r.status === 404) { grid.innerHTML = '<p style="font-size:13px;color:var(--muted)">Нет общих альбомов</p>'; return; }
     const albums = await r.json().catch(() => []);
     renderAlbums(grid, Array.isArray(albums) ? albums : [], true);
@@ -730,7 +731,11 @@ function renderAlbums(grid, albums, shared) {
     const newCard = document.createElement('div');
     newCard.className = 'album-card-new';
     newCard.innerHTML = `<div class="album-card-new-icon">＋</div><div class="album-card-new-label">Новый альбом</div>`;
-    newCard.onclick = () => { document.getElementById('new-album-title').value = ''; document.getElementById('new-album-desc').value = ''; openModal('modal-new-album'); };
+    newCard.onclick = () => {
+      document.getElementById('new-album-title').value = '';
+      document.getElementById('new-album-desc').value = '';
+      openModal('modal-new-album');
+    };
     grid.appendChild(newCard);
   }
 
@@ -757,45 +762,45 @@ function renderAlbums(grid, albums, shared) {
     `;
     card.onclick = () => goPhotos(album, shared);
     grid.appendChild(card);
-
-    // load cover preview
     loadAlbumCover(card, album.id);
   });
 }
 
 async function loadAlbumCover(card, albumId) {
   try {
-    const r = await api('GET', '/albums/get_photos_album?album_id=' + albumId);
+    // новый URL: GET /albums/{albumId}
+    const r = await api('GET', `/albums/${albumId}`);
     if (!r.ok) return;
     const photos = await r.json();
     if (!Array.isArray(photos) || photos.length === 0) return;
     const coverEl = card.querySelector('.album-cover');
     const badge = coverEl.querySelector('.album-badge-shared');
-
     const previews = photos.slice(0, 4);
+
     if (previews.length === 1) {
-      const img = await fetchPhotoBlob(photos[0].id, albumId);
-      if (img) { coverEl.innerHTML = `<div class="album-cover-single"><img src="${img}" /></div>`; if (badge) coverEl.appendChild(badge); }
+      const src = await fetchPhotoBlob(photos[0].id, albumId);
+      if (src) {
+        coverEl.innerHTML = `<div class="album-cover-single"><img src="${src}" style="color:transparent" /></div>`;
+        if (badge) coverEl.appendChild(badge);
+      }
     } else {
       const mosaic = document.createElement('div');
       mosaic.className = 'album-cover-mosaic';
       for (const p of previews) {
         const src = await fetchPhotoBlob(p.id, albumId);
-        if (src) { const img = document.createElement('img'); img.src = src; mosaic.appendChild(img); }
+        if (src) { const img = document.createElement('img'); img.src = src; img.style.color = 'transparent'; mosaic.appendChild(img); }
       }
       coverEl.innerHTML = '';
       coverEl.appendChild(mosaic);
       if (badge) coverEl.appendChild(badge);
     }
-
-    const metaEl = card.querySelector('.album-meta');
-    if (metaEl) metaEl.textContent = photos.length + ' фото';
   } catch(e) {}
 }
 
 async function fetchPhotoBlob(photoId, albumId) {
   try {
-    const r = await api('GET', `/albums/photos/${photoId}/file?album_id=${albumId}`);
+    // новый URL: GET /albums/{albumId}/photos/{photoId}/file
+    const r = await api('GET', `/albums/${albumId}/photos/${photoId}/file`);
     if (!r.ok) return null;
     const blob = await r.blob();
     return URL.createObjectURL(blob);
@@ -809,7 +814,8 @@ async function createAlbum() {
   errEl.classList.remove('show');
   if (!title) { errEl.textContent = 'Введите название'; errEl.classList.add('show'); return; }
   try {
-    const r = await api('POST', '/albums/create_albums', { title, description: desc || null });
+    // новый URL: POST /albums/
+    const r = await api('POST', '/albums/', { title, description: desc || null });
     if (!r.ok) { const d = await r.json().catch(() => ({})); errEl.textContent = d.detail || 'Ошибка'; errEl.classList.add('show'); return; }
     closeModal('modal-new-album');
     toast('Альбом создан', 'success');
@@ -820,7 +826,8 @@ async function createAlbum() {
 async function confirmDeleteAlbum() {
   if (!confirm(`Удалить альбом «${currentAlbum.title}»? Все фото будут удалены.`)) return;
   try {
-    const r = await api('DELETE', '/albums/delete_album', { id: currentAlbum.id });
+    // новый URL: DELETE /albums/{id}
+    const r = await api('DELETE', `/albums/${currentAlbum.id}`);
     if (!r.ok) { toast('Ошибка удаления', 'error'); return; }
     toast('Альбом удалён', 'success');
     goAlbums();
@@ -833,7 +840,8 @@ async function loadPhotos(albumId) {
   const grid = document.getElementById('photo-grid');
   grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
   try {
-    const r = await api('GET', '/albums/get_photos_album?album_id=' + albumId);
+    // новый URL: GET /albums/{albumId}
+    const r = await api('GET', `/albums/${albumId}`);
     if (!r.ok) { grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🖼</div><div class="empty-title">Не удалось загрузить фото</div></div>'; return; }
     const photos = await r.json().catch(() => []);
     renderPhotos(grid, photos, albumId);
@@ -866,16 +874,25 @@ function renderPhotos(grid, photos, albumId) {
     card.className = 'photo-card';
     card.dataset.photoId = photo.id;
     card.innerHTML = `
-      <img src="" alt="${esc(photo.filename)}" loading="lazy" />
+      <img src="" alt="" style="color:transparent" loading="lazy" />
       <div class="photo-card-overlay">
         ${!isSharedAlbum ? `<button class="photo-delete-btn" onclick="deletePhoto(event, ${photo.id}, ${albumId})">✕</button>` : ''}
       </div>
     `;
     const img = card.querySelector('img');
-    img.onclick = () => openLightbox(img.src);
+
+    // клик по фото — лайтбокс, но только если картинка уже загружена
+    img.onclick = (e) => {
+      e.stopPropagation();
+      if (img.src && img.src !== window.location.href) openLightbox(img.src);
+    };
+
     grid.appendChild(card);
 
-    fetchPhotoBlob(photo.id, albumId).then(src => { if (src) img.src = src; });
+    // загружаем blob и подставляем в src
+    fetchPhotoBlob(photo.id, albumId).then(src => {
+      if (src) img.src = src;
+    });
   });
 }
 
@@ -886,7 +903,8 @@ async function uploadPhotos(files, albumId) {
     try {
       const h = {};
       if (token) h['Authorization'] = 'Bearer ' + token;
-      const r = await fetch(BASE + '/albums/' + albumId + '/photos', { method: 'POST', headers: h, body: fd });
+      // новый URL: POST /albums/{albumId}/photos
+      const r = await fetch(BASE + `/albums/${albumId}/photos`, { method: 'POST', headers: h, body: fd });
       if (!r.ok) { const d = await r.json().catch(()=>({})); toast(d.detail || 'Ошибка загрузки', 'error'); continue; }
       toast('Фото загружено', 'success');
     } catch(e) { toast('Ошибка соединения', 'error'); }
@@ -898,7 +916,8 @@ async function deletePhoto(e, photoId, albumId) {
   e.stopPropagation();
   if (!confirm('Удалить фото?')) return;
   try {
-    const r = await api('DELETE', '/albums/delete_photos', { id: photoId });
+    // новый URL: DELETE /albums/{albumId}/photo/{photoId}
+    const r = await api('DELETE', `/albums/${albumId}/photo/${photoId}`);
     if (!r.ok) { toast('Ошибка удаления', 'error'); return; }
     toast('Фото удалено', 'success');
     loadPhotos(albumId);
@@ -911,36 +930,79 @@ function openLightbox(src) {
   document.getElementById('lightbox-img').src = src;
   document.getElementById('lightbox').classList.add('open');
 }
-function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightbox-img').src = '';
+}
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
 // ── SHARE ──────────────────────────────────────────
 
-function openShareModal() {
+async function openShareModal() {
+  selectedShareUserId = null;
   document.getElementById('share-album-name').textContent = currentAlbum.title;
-  document.getElementById('share-user-id').value = '';
   document.getElementById('share-error').classList.remove('show');
-  // generate link
-  const link = `${window.location.href.split('?')[0]}?album=${currentAlbum.id}`;
-  document.getElementById('share-link-val').value = link;
-  switchShareTab('give');
+  document.getElementById('btn-do-share').disabled = true;
+  document.getElementById('share-users-loading').style.display = 'block';
+  document.getElementById('share-users-list').style.display = 'none';
   openModal('modal-share');
+
+  try {
+    const r = await api('GET', '/admin/all_users');
+    const users = await r.json().catch(() => []);
+    renderUsersList(users);
+  } catch(e) {
+    document.getElementById('share-users-loading').textContent = 'Не удалось загрузить пользователей';
+  }
 }
 
-function switchShareTab(tab) {
-  document.getElementById('share-give').style.display = tab === 'give' ? '' : 'none';
-  document.getElementById('share-link').style.display = tab === 'link' ? '' : 'none';
-  document.getElementById('stab-give').classList.toggle('active', tab === 'give');
-  document.getElementById('stab-link').classList.toggle('active', tab === 'link');
+function renderUsersList(users) {
+  const loading = document.getElementById('share-users-loading');
+  const list = document.getElementById('share-users-list');
+
+  // фильтруем себя
+  const others = users.filter(u => u.username !== currentUser.username);
+
+  if (others.length === 0) {
+    loading.textContent = 'Нет других пользователей';
+    return;
+  }
+
+  loading.style.display = 'none';
+  list.style.display = 'block';
+  list.innerHTML = '';
+
+  others.forEach(user => {
+    const item = document.createElement('div');
+    item.className = 'user-list-item';
+    item.dataset.userId = user.id;
+    item.innerHTML = `
+      <div class="user-list-avatar">${esc(user.username[0].toUpperCase())}</div>
+      <div class="user-list-info">
+        <div class="user-list-name">${esc(user.username)}</div>
+        <div class="user-list-email">${esc(user.email || '')}</div>
+      </div>
+      <div class="user-list-check">✓</div>
+    `;
+    item.onclick = () => selectShareUser(item, user.id);
+    list.appendChild(item);
+  });
+}
+
+function selectShareUser(item, userId) {
+  document.querySelectorAll('.user-list-item').forEach(el => el.classList.remove('selected'));
+  item.classList.add('selected');
+  selectedShareUserId = userId;
+  document.getElementById('btn-do-share').disabled = false;
 }
 
 async function doShareAlbum() {
-  const userId = parseInt(document.getElementById('share-user-id').value);
   const errEl = document.getElementById('share-error');
   errEl.classList.remove('show');
-  if (!userId || userId < 1) { errEl.textContent = 'Введите корректный ID'; errEl.classList.add('show'); return; }
+  if (!selectedShareUserId) { errEl.textContent = 'Выберите пользователя'; errEl.classList.add('show'); return; }
   try {
-    const r = await api('POST', `/albums/set_share_album?shared_user_id=${userId}&shared_album_id=${currentAlbum.id}`);
+    // новый URL: POST /albums/{albumId}/share?shared_user_id=...
+    const r = await api('POST', `/albums/${currentAlbum.id}/share?shared_user_id=${selectedShareUserId}`);
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       errEl.textContent = d.detail || 'Ошибка';
@@ -948,34 +1010,9 @@ async function doShareAlbum() {
       return;
     }
     closeModal('modal-share');
-    toast(`Доступ открыт для пользователя #${userId}`, 'success');
+    toast('Доступ открыт', 'success');
   } catch(e) { errEl.textContent = 'Ошибка соединения'; errEl.classList.add('show'); }
 }
-
-function copyShareLink() {
-  const val = document.getElementById('share-link-val').value;
-  navigator.clipboard.writeText(val).then(() => toast('Ссылка скопирована', 'success')).catch(() => {
-    document.getElementById('share-link-val').select();
-    document.execCommand('copy');
-    toast('Ссылка скопирована', 'success');
-  });
-}
-
-// ── MISC ───────────────────────────────────────────
-
-function esc(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// Handle ?album= query param for shared links
-window.addEventListener('load', () => {
-  const params = new URLSearchParams(window.location.search);
-  const albumId = params.get('album');
-  if (albumId && token) {
-    // будет открыт после авторизации
-    window._pendingAlbum = albumId;
-  }
-});
 </script>
 </body>
 </html>
