@@ -298,6 +298,8 @@ body {
   border: 1px solid var(--border);
   padding: 1.75rem;
   width: 100%; max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 1.25rem; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; }
@@ -570,7 +572,6 @@ let token = null;
 let currentUser = null;
 let currentAlbum = null;
 let isSharedAlbum = false;
-let selectedShareUserId = null;
 
 // ── UTILS ──────────────────────────────────────────
 
@@ -706,7 +707,6 @@ async function loadAlbums() {
   const grid = document.getElementById('albums-grid');
   grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
   try {
-    // новый URL: GET /albums/
     const r = await api('GET', '/albums/');
     const albums = await r.json().catch(() => []);
     renderAlbums(grid, Array.isArray(albums) ? albums : [], false);
@@ -717,7 +717,6 @@ async function loadSharedAlbums() {
   const grid = document.getElementById('shared-albums-grid');
   grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
   try {
-    // новый URL: GET /albums/share/
     const r = await api('GET', '/albums/share/');
     if (r.status === 404) { grid.innerHTML = '<p style="font-size:13px;color:var(--muted)">Нет общих альбомов</p>'; return; }
     const albums = await r.json().catch(() => []);
@@ -771,7 +770,6 @@ function renderAlbums(grid, albums, shared) {
 
 async function loadAlbumCover(card, albumId) {
   try {
-    // новый URL: GET /albums/{albumId}
     const r = await api('GET', `/albums/${albumId}`);
     if (!r.ok) return;
     const photos = await r.json();
@@ -802,7 +800,6 @@ async function loadAlbumCover(card, albumId) {
 
 async function fetchPhotoBlob(photoId, albumId) {
   try {
-    // новый URL: GET /albums/{albumId}/photos/{photoId}/file
     const r = await api('GET', `/albums/${albumId}/photos/${photoId}/file`);
     if (!r.ok) return null;
     const blob = await r.blob();
@@ -817,7 +814,6 @@ async function createAlbum() {
   errEl.classList.remove('show');
   if (!title) { errEl.textContent = 'Введите название'; errEl.classList.add('show'); return; }
   try {
-    // новый URL: POST /albums/
     const r = await api('POST', '/albums/', { title, description: desc || null });
     if (!r.ok) { const d = await r.json().catch(() => ({})); errEl.textContent = d.detail || 'Ошибка'; errEl.classList.add('show'); return; }
     closeModal('modal-new-album');
@@ -829,7 +825,6 @@ async function createAlbum() {
 async function confirmDeleteAlbum() {
   if (!confirm(`Удалить альбом «${currentAlbum.title}»? Все фото будут удалены.`)) return;
   try {
-    // новый URL: DELETE /albums/{id}
     const r = await api('DELETE', `/albums/${currentAlbum.id}`);
     if (!r.ok) { toast('Ошибка удаления', 'error'); return; }
     toast('Альбом удалён', 'success');
@@ -843,7 +838,6 @@ async function loadPhotos(albumId) {
   const grid = document.getElementById('photo-grid');
   grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
   try {
-    // новый URL: GET /albums/{albumId}
     const r = await api('GET', `/albums/${albumId}`);
     if (!r.ok) { grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🖼</div><div class="empty-title">Не удалось загрузить фото</div></div>'; return; }
     const photos = await r.json().catch(() => []);
@@ -884,7 +878,6 @@ function renderPhotos(grid, photos, albumId) {
     `;
     const img = card.querySelector('img');
 
-    // клик по фото — лайтбокс, но только если картинка уже загружена
     img.onclick = (e) => {
       e.stopPropagation();
       if (img.src && img.src !== window.location.href) openLightbox(img.src);
@@ -892,7 +885,6 @@ function renderPhotos(grid, photos, albumId) {
 
     grid.appendChild(card);
 
-    // загружаем blob и подставляем в src
     fetchPhotoBlob(photo.id, albumId).then(src => {
       if (src) img.src = src;
     });
@@ -906,7 +898,6 @@ async function uploadPhotos(files, albumId) {
     try {
       const h = {};
       if (token) h['Authorization'] = 'Bearer ' + token;
-      // новый URL: POST /albums/{albumId}/photos
       const r = await fetch(BASE + `/albums/${albumId}/photos`, { method: 'POST', headers: h, body: fd });
       if (!r.ok) { const d = await r.json().catch(()=>({})); toast(d.detail || 'Ошибка загрузки', 'error'); continue; }
       toast('Фото загружено', 'success');
@@ -919,7 +910,6 @@ async function deletePhoto(e, photoId, albumId) {
   e.stopPropagation();
   if (!confirm('Удалить фото?')) return;
   try {
-    // новый URL: DELETE /albums/{albumId}/photo/{photoId}
     const r = await api('DELETE', `/albums/${albumId}/photo/${photoId}`);
     if (!r.ok) { toast('Ошибка удаления', 'error'); return; }
     toast('Фото удалено', 'success');
@@ -941,81 +931,85 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbo
 
 // ── SHARE ──────────────────────────────────────────
 
-async function openShareModal() {
-  selectedShareUserId = null;
-  document.getElementById('share-album-name').textContent = currentAlbum.title;
-  document.getElementById('share-error').classList.remove('show');
-  document.getElementById('btn-do-share').disabled = true;
-  document.getElementById('share-users-loading').style.display = 'block';
-  document.getElementById('share-users-list').style.display = 'none';
-  openModal('modal-share');
-
-  try {
-    const r = await api('GET', '/admin/all_users');
-    const users = await r.json().catch(() => []);
-    renderUsersList(users);
-  } catch(e) {
-    document.getElementById('share-users-loading').textContent = 'Не удалось загрузить пользователей';
+function switchShareTab(tab) {
+  if (tab === 'give') {
+    document.getElementById('share-give').style.display = '';
+    document.getElementById('share-link').style.display = 'none';
+    document.getElementById('stab-give').classList.add('active');
+    document.getElementById('stab-link').classList.remove('active');
+  } else {
+    document.getElementById('share-give').style.display = 'none';
+    document.getElementById('share-link').style.display = '';
+    document.getElementById('stab-give').classList.remove('active');
+    document.getElementById('stab-link').classList.add('active');
+    // Генерируем ссылку
+    if (currentAlbum) {
+      document.getElementById('share-link-val').value = 
+        `${window.location.origin}/share/${currentAlbum.id}`;
+    }
   }
 }
 
-function renderUsersList(users) {
-  const loading = document.getElementById('share-users-loading');
-  const list = document.getElementById('share-users-list');
-
-  // фильтруем себя
-  const others = users.filter(u => u.username !== currentUser.username);
-
-  if (others.length === 0) {
-    loading.textContent = 'Нет других пользователей';
+async function openShareModal() {
+  // Проверяем, что альбом выбран
+  if (!currentAlbum) {
+    toast('Сначала выберите альбом', 'error');
     return;
   }
 
-  loading.style.display = 'none';
-  list.style.display = 'block';
-  list.innerHTML = '';
+  // Устанавливаем название альбома
+  const albumNameEl = document.getElementById('share-album-name');
+  if (albumNameEl) {
+    albumNameEl.textContent = currentAlbum.title;
+  }
 
-  others.forEach(user => {
-    const item = document.createElement('div');
-    item.className = 'user-list-item';
-    item.dataset.userId = user.id;
-    item.innerHTML = `
-      <div class="user-list-avatar">${esc(user.username[0].toUpperCase())}</div>
-      <div class="user-list-info">
-        <div class="user-list-name">${esc(user.username)}</div>
-        <div class="user-list-email">${esc(user.email || '')}</div>
-      </div>
-      <div class="user-list-check">✓</div>
-    `;
-    item.onclick = () => selectShareUser(item, user.id);
-    list.appendChild(item);
-  });
+  // Очищаем ошибки и поля
+  const errEl = document.getElementById('share-error');
+  if (errEl) errEl.classList.remove('show');
+  
+  const userIdInput = document.getElementById('share-user-id');
+  if (userIdInput) userIdInput.value = '';
+
+  // Открываем модальное окно
+  openModal('modal-share');
 }
 
-function selectShareUser(item, userId) {
-  document.querySelectorAll('.user-list-item').forEach(el => el.classList.remove('selected'));
-  item.classList.add('selected');
-  selectedShareUserId = userId;
-  document.getElementById('btn-do-share').disabled = false;
-}
-
-async function doShareAlbum() 
-{
+async function doShareAlbum() {
   const errEl = document.getElementById('share-error');
   errEl.classList.remove('show');
-  if (!selectedShareUserId) { errEl.textContent = 'Выберите пользователя'; errEl.classList.add('show'); return; }
+  
+  const userId = document.getElementById('share-user-id').value.trim();
+  if (!userId) {
+    errEl.textContent = 'Введите ID пользователя';
+    errEl.classList.add('show');
+    return;
+  }
+  
   try {
-    // новый URL: POST /albums/{albumId}/share?shared_user_id=...
-    const r = await api('POST', `/albums/${currentAlbum.id}/share?shared_user_id=${selectedShareUserId}`);
+    const r = await api('POST', `/albums/${currentAlbum.id}/share?shared_user_id=${userId}`);
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
-      errEl.textContent = d.detail || 'Ошибка';
+      errEl.textContent = d.detail || 'Ошибка при открытии доступа';
       errEl.classList.add('show');
       return;
     }
     closeModal('modal-share');
-    toast('Доступ открыт', 'success');
-  } catch(e) { errEl.textContent = 'Ошибка соединения'; errEl.classList.add('show'); }
+    toast('Доступ успешно открыт', 'success');
+  } catch(e) {
+    errEl.textContent = 'Ошибка соединения с сервером';
+    errEl.classList.add('show');
+  }
+}
+
+function copyShareLink() {
+  const input = document.getElementById('share-link-val');
+  if (!input || !input.value) {
+    toast('Ссылка не сгенерирована', 'error');
+    return;
+  }
+  input.select();
+  document.execCommand('copy');
+  toast('Ссылка скопирована', 'success');
 }
 </script>
 </body>
