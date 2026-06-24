@@ -26,4 +26,3 @@ def sigin(data: UserCreateScheme):
         password=data.password
     )    
     return f'Здравствуйте, {user.login}'
-

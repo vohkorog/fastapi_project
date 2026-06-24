@@ -13,4 +13,3 @@ def get_session():
     with session_factory() as session:
         yield session
 
-

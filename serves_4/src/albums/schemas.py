@@ -30,4 +30,3 @@ class PhotoDeleteScheme(BaseModel):
     id: int 
     album_id: int
 
-

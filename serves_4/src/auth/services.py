@@ -120,8 +120,8 @@ class user_db:
     @staticmethod
     def get_all_users():
         with session_factory() as session:
-
-            query = select(UserModel)
-            result = session.execute(query)
-            users = result.scalars().all()
-            return users
+            users = session.execute(select(UserModel)).scalars().all()
+            if not users:
+                return f'Пользователей нет'
+            else:
+                return users

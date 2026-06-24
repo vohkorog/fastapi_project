@@ -1,6 +1,4 @@
-import os 
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from datetime import datetime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Text, String, ForeignKey, Integer, text, UniqueConstraint
@@ -33,7 +31,7 @@ class AlbumModel(Base):
     create_at: Mapped[time_now]
     
     #связи
-    members: Mapped[list["MemberModel"]] = relationship("MemberModel", back_populates="share_albums")
+    members: Mapped[list["MemberModel"]] = relationship("MemberModel", back_populates="share_albums", cascade="all, delete-orphan")
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="albums")
     photos: Mapped[list["PhotoModel"]] = relationship("PhotoModel", back_populates="album", cascade="all, delete-orphan")
 

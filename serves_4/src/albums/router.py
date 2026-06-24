@@ -94,4 +94,3 @@ def set_share_album(shared_user_id: int,
     album_db.shared_album(shared_album_id=albums_id, shared_user_id=shared_user_id, ownre_id=current_user['id'])
     return f'Альбом с id - {albums_id} для пользователя {shared_user_id} успешно присвоен'
 
-
