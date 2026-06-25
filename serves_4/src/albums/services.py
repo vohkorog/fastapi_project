@@ -213,3 +213,15 @@ class album_db:
                 album_ids = [member.album_id for member in members]
                 albums = session.execute(select(AlbumModel).where(AlbumModel.id.in_(album_ids))).scalars().all()
                 return albums           
+            
+    @staticmethod
+    def delete_shared_user_from_album(album_id: int, owner_id: int, shared_user_id: int):
+        with session_factory() as session:
+            album = album_db.get_album(album_id=album_id, user_id=owner_id)
+            if not album:
+                return f'Такого альбома не существует'
+            else:
+                member = session.execute(select(MemberModel).where(MemberModel.album_id == album_id, MemberModel.user_id == shared_user_id)).scalar_one_or_none()
+                session.delete(member)
+                session.commit()
+                return member

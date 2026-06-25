@@ -94,3 +94,14 @@ def set_share_album(shared_user_id: int,
     album_db.shared_album(shared_album_id=albums_id, shared_user_id=shared_user_id, ownre_id=current_user['id'])
     return f'Альбом с id - {albums_id} для пользователя {shared_user_id} успешно присвоен'
 
+@router.delete('/{album_id}/share/{shared_user_id}', summary= 'Удаление пользователя из общего альбома')
+def delete_shared_user_from_album(album_id: int, 
+                                  shared_user_id: int, 
+                                  owner_id: dict = Depends(user_db.get_current_user_from_token)):
+    
+    """Удвление пользователя из общего альбома по id альбома и id пользователя"""
+
+    user = album_db.delete_shared_user_from_album(album_id=album_id, shared_user_id=shared_user_id, owner_id=owner_id['id'])
+    return f'Пользователь {user.user_id} удален'
+    
+
