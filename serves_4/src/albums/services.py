@@ -1,5 +1,5 @@
 import sys
-from src.models import AlbumModel, PhotoModel, MemberModel
+from src.models import AlbumModel, PhotoModel, MemberModel, UserModel
 from src.database import session_factory
 from sqlalchemy import select
 from fastapi import UploadFile, HTTPException
@@ -225,3 +225,28 @@ class album_db:
                 session.delete(member)
                 session.commit()
                 return member
+            
+    @staticmethod
+    def get_shared_users(album_id: int, owner_id: int):
+        album = album_db.get_album(user_id=owner_id, album_id=album_id)
+
+        if not album: 
+            raise HTTPException(status_code=404, detail="Пользователь не имеет доступ к альбому")
+        else: 
+            with session_factory() as session:
+                members = session.execute(select(MemberModel).where(MemberModel.album_id == album_id)).scalars().all()
+
+                if not members: 
+                    return []
+                
+                user_ids = [member.user_id for member in members]
+                users = session.execute(select(UserModel).where(UserModel.id.in_(user_ids))).scalars().all()
+
+                return [
+                    {
+                        "id": user.id,
+                        "login": user.login,
+                        "email": user.email
+                    }
+                    for user in users
+                ]

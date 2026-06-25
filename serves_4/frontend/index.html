@@ -161,6 +161,8 @@ body {
 .section-head {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 .section-title { font-size: 20px; font-weight: 600; }
 
@@ -297,7 +299,7 @@ body {
   border-radius: 16px;
   border: 1px solid var(--border);
   padding: 1.75rem;
-  width: 100%; max-width: 420px;
+  width: 100%; max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -311,9 +313,39 @@ body {
   margin-bottom: 1rem;
 }
 .share-section-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-.share-tabs { display: flex; gap: 6px; margin-bottom: 1rem; }
-.share-tab { flex: 1; padding: 8px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; color: var(--muted); text-align: center; }
-.share-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+.shared-users-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  margin-bottom: 12px;
+  background: var(--bg);
+}
+
+.shared-user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.shared-user-item:last-child { border-bottom: none; }
+.shared-user-item .user-info { display: flex; align-items: center; gap: 8px; }
+.shared-user-item .user-id { color: var(--muted); font-size: 12px; }
+.shared-user-item .remove-btn {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.shared-user-item .remove-btn:hover { background: #fee2e2; }
 
 /* ── LIGHTBOX ── */
 .lightbox {
@@ -477,8 +509,9 @@ body {
           <div class="section-title" id="album-title-heading"></div>
           <div style="font-size:13px;color:var(--muted);margin-top:2px" id="album-desc-heading"></div>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" id="btn-share-album" onclick="openShareModal()">🔗 Поделиться</button>
+          <button class="btn btn-secondary btn-sm" id="btn-manage-shared" onclick="openManageSharedModal()" style="display:none">👥 Управление доступом</button>
           <button class="btn btn-danger btn-sm" id="btn-delete-album" onclick="confirmDeleteAlbum()">Удалить альбом</button>
         </div>
       </div>
@@ -512,12 +545,11 @@ body {
   </div>
 </div>
 
-<!-- Share Modal -->
+<!-- Share Modal (добавление пользователя) -->
 <div class="modal-overlay" id="modal-share">
   <div class="modal">
     <div class="modal-title">Поделиться альбомом</div>
 
-    <!-- Give access tab -->
     <div id="share-give">
       <div class="share-info">
         Введите ID пользователя, которому хотите открыть доступ к альбому «<span id="share-album-name"></span>».
@@ -532,15 +564,22 @@ body {
         <button class="btn btn-primary" onclick="doShareAlbum()">Открыть доступ</button>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- Share link tab -->
-    <div id="share-link" style="display:none">
-      <div class="share-info">
-        Скопируйте ссылку-приглашение и отправьте её другому пользователю. После перехода по ней он попадёт сразу на этот альбом (если авторизован).
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeModal('modal-share')">Закрыть</button>
-      </div>
+<!-- Manage Shared Users Modal (удаление пользователей) -->
+<div class="modal-overlay" id="modal-manage-shared">
+  <div class="modal">
+    <div class="modal-title">Управление доступом</div>
+    <div class="share-info">
+      Пользователи, имеющие доступ к альбому «<span id="manage-album-name"></span>»:
+    </div>
+    <div id="shared-users-list" class="shared-users-list">
+      <div class="loading-spinner" style="padding:1rem"><div class="spinner"></div></div>
+    </div>
+    <div id="manage-shared-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-manage-shared')">Закрыть</button>
     </div>
   </div>
 </div>
@@ -684,8 +723,13 @@ function goPhotos(album, shared = false) {
   document.getElementById('breadcrumb-album-name').textContent = album.title;
   document.getElementById('album-title-heading').textContent = album.title;
   document.getElementById('album-desc-heading').textContent = album.description || '';
-  document.getElementById('btn-share-album').style.display = shared ? 'none' : '';
-  document.getElementById('btn-delete-album').style.display = shared ? 'none' : '';
+  
+  // Показываем кнопки управления доступом только для своих альбомов (не общих)
+  const isOwnAlbum = !shared;
+  document.getElementById('btn-share-album').style.display = isOwnAlbum ? '' : 'none';
+  document.getElementById('btn-manage-shared').style.display = isOwnAlbum ? '' : 'none';
+  document.getElementById('btn-delete-album').style.display = isOwnAlbum ? '' : 'none';
+  
   loadPhotos(album.id);
 }
 
@@ -917,48 +961,25 @@ function closeLightbox() {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
-// ── SHARE ──────────────────────────────────────────
-
-function switchShareTab(tab) {
-  if (tab === 'give') {
-    document.getElementById('share-give').style.display = '';
-    document.getElementById('share-link').style.display = 'none';
-    document.getElementById('stab-give').classList.add('active');
-    document.getElementById('stab-link').classList.remove('active');
-  } else {
-    document.getElementById('share-give').style.display = 'none';
-    document.getElementById('share-link').style.display = '';
-    document.getElementById('stab-give').classList.remove('active');
-    document.getElementById('stab-link').classList.add('active');
-    // Генерируем ссылку
-    if (currentAlbum) {
-      document.getElementById('share-link-val').value = 
-        `${window.location.origin}/share/${currentAlbum.id}`;
-    }
-  }
-}
+// ── SHARE (Добавление пользователя) ──────────────
 
 async function openShareModal() {
-  // Проверяем, что альбом выбран
   if (!currentAlbum) {
     toast('Сначала выберите альбом', 'error');
     return;
   }
 
-  // Устанавливаем название альбома
   const albumNameEl = document.getElementById('share-album-name');
   if (albumNameEl) {
     albumNameEl.textContent = currentAlbum.title;
   }
 
-  // Очищаем ошибки и поля
   const errEl = document.getElementById('share-error');
   if (errEl) errEl.classList.remove('show');
   
   const userIdInput = document.getElementById('share-user-id');
   if (userIdInput) userIdInput.value = '';
 
-  // Открываем модальное окно
   openModal('modal-share');
 }
 
@@ -988,6 +1009,105 @@ async function doShareAlbum() {
     errEl.classList.add('show');
   }
 }
+
+// ── MANAGE SHARED (Удаление пользователей) ──────
+
+async function openManageSharedModal() {
+  if (!currentAlbum) {
+    toast('Сначала выберите альбом', 'error');
+    return;
+  }
+
+  const albumNameEl = document.getElementById('manage-album-name');
+  if (albumNameEl) {
+    albumNameEl.textContent = currentAlbum.title;
+  }
+
+  const errEl = document.getElementById('manage-shared-error');
+  if (errEl) errEl.classList.remove('show');
+
+  openModal('modal-manage-shared');
+  await loadSharedUsers();
+}
+
+async function loadSharedUsers() {
+  const listEl = document.getElementById('shared-users-list');
+  listEl.innerHTML = '<div class="loading-spinner" style="padding:1rem"><div class="spinner"></div></div>';
+  
+  try {
+    // Получаем список пользователей, у которых есть доступ к альбому
+    const r = await api('GET', `/albums/${currentAlbum.id}/shared-users`);
+    
+    if (!r.ok) {
+      if (r.status === 404) {
+        listEl.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem">Нет пользователей с доступом</p>';
+        return;
+      }
+      listEl.innerHTML = '<p style="text-align:center;color:var(--danger);padding:1rem">Ошибка загрузки</p>';
+      return;
+    }
+    
+    const users = await r.json();
+    
+    if (!Array.isArray(users) || users.length === 0) {
+      listEl.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem">Нет пользователей с доступом</p>';
+      return;
+    }
+    
+    listEl.innerHTML = '';
+    users.forEach(user => {
+      const item = document.createElement('div');
+      item.className = 'shared-user-item';
+      item.innerHTML = `
+        <div class="user-info">
+          <span class="user-id">ID: ${user.id}</span>
+          <span class = "user-id">login: ${esc(user.login || 'Пользователь')}</span>
+          
+          ${user.email ? `<span style="color:var(--muted);font-size:12px">email: ${esc(user.email)}</span>` : ''}
+        </div>
+        <button class="remove-btn" onclick="removeSharedUser(${user.id})">Удалить</button>
+      `;
+      listEl.appendChild(item);
+    });
+  } catch(e) {
+    listEl.innerHTML = '<p style="text-align:center;color:var(--danger);padding:1rem">Ошибка соединения</p>';
+  }
+}
+
+async function removeSharedUser(userId) {
+  if (!confirm(`Удалить доступ пользователя #${userId} к альбому?`)) return;
+  
+  const errEl = document.getElementById('manage-shared-error');
+  errEl.classList.remove('show');
+  
+  try {
+    const r = await api('DELETE', `/albums/${currentAlbum.id}/share/${userId}`);
+    
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      errEl.textContent = d.detail || 'Ошибка при удалении доступа';
+      errEl.classList.add('show');
+      return;
+    }
+    
+    toast('Доступ успешно удалён', 'success');
+    // Обновляем список
+    await loadSharedUsers();
+  } catch(e) {
+    errEl.textContent = 'Ошибка соединения с сервером';
+    errEl.classList.add('show');
+  }
+}
+
+// ── Обработчик для закрытия модалок по клику вне окна ──
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.remove('open');
+    }
+  });
+});
 </script>
 </body>
 </html>
