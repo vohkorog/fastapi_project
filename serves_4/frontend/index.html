@@ -115,8 +115,8 @@ body {
 .btn-danger:hover { background: #fee2e2; }
 .btn-full { width: 100%; }
 .btn-sm { padding: 7px 12px; font-size: 13px; }
-.btn-icon { padding: 7px; border-radius: var(--radius-sm); }
-
+.btn-icon { padding: 7px; border-radius: var(--radius-sm);}
+.btn-mrg {margin-bottom: 24px;}
 .error-msg {
   background: var(--danger-light); color: var(--danger);
   border: 1px solid #fca5a5; border-radius: var(--radius-sm);
@@ -539,7 +539,6 @@ body {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" id="btn-share-album" onclick="openShareModal()">🔗 Поделиться</button>
-          <button class="btn btn-secondary btn-sm" id="btn-manage-shared" onclick="openManageSharedModal()" style="display:none">👥 Управление доступом</button>
           <button class="btn btn-secondary btn-sm" id="btn-edit-album" onclick="openEditAlbumModal()">✏️ Редактировать</button>
           <button class="btn btn-danger btn-sm" id="btn-delete-album" onclick="confirmDeleteAlbum()">Удалить альбом</button>
         </div>
@@ -622,7 +621,48 @@ body {
 
     <div id="profile-error" class="error-msg"></div>
     <div id="profile-success" class="error-msg" style="background:var(--success);color:#fff;border-color:var(--success);display:none;"></div>
+    <div>
+      <button class="btn btn-primary">Изменить пароль2</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-profile')">Отмена</button>
+      <button class="btn btn-primary" onclick="changePassword()">Изменить пароль</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Changing Pass Modal (изменение пароля) -->
+<div class="modal-overlay" id="changing-pass-modal">
+  <div class="modal">
+    <div class="modal-title">👤 Настройки профиля</div>
     
+    <div class="share-info">
+      Пользователь: <strong id="profile-username">username</strong>
+      <br>
+      Email: <strong id="profile-email">email@example.com</strong>
+    </div>
+
+    <div style="margin-top: 1rem;">
+      <div class="form-group">
+        <label class="form-label">Текущий пароль</label>
+        <input class="form-input" id="profile-old-password" type="password" placeholder="Введите текущий пароль" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Новый пароль</label>
+        <input class="form-input" id="profile-new-password" type="password" placeholder="Введите новый пароль" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Подтверждение нового пароля</label>
+        <input class="form-input" id="profile-confirm-password" type="password" placeholder="Подтвердите новый пароль" />
+      </div>
+    </div>
+
+    <div id="profile-error" class="error-msg"></div>
+    <div id="profile-success" class="error-msg" style="background:var(--success);color:#fff;border-color:var(--success);display:none;"></div>
+    <div>
+      <button class="btn btn-primary">Изменить пароль2</button>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-profile')">Отмена</button>
       <button class="btn btn-primary" onclick="changePassword()">Изменить пароль</button>
@@ -634,7 +674,7 @@ body {
 <div class="modal-overlay" id="modal-share">
   <div class="modal">
     <div class="modal-title">Поделиться альбомом</div>
-
+      <button class="btn btn-secondary btn-sm btn-mrg" id="btn-manage-shared" onclick="openManageSharedModal()" style="display:none">👥 Управление доступом</button>
     <div id="share-give">
       <div class="share-info">
         Введите ID пользователя, которому хотите открыть доступ к альбому «<span id="share-album-name"></span>».
