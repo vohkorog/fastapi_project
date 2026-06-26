@@ -18,7 +18,6 @@ class UserModel(Base):
     login: Mapped[str] = mapped_column(String(100), unique=True)
     password_hash: Mapped[str] = mapped_column(String)
     create_at: Mapped[time_now]
-    mark: Mapped[str] = mapped_column(String(10), default='Active')
     albums: Mapped[list["AlbumModel"]] = relationship("AlbumModel", back_populates="user", cascade="all, delete-orphan")
     
 class AlbumModel(Base):

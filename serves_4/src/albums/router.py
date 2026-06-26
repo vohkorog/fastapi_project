@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import FileResponse
-from src.albums.schemas import AlbumsCreateScheme, PhotoScheme
+from src.albums.schemas import AlbumsCreateScheme, PhotoScheme, AlbumChangingScheme
 from src.auth.services import user_db
 from src.albums.services import album_db, photo_db
 
@@ -20,6 +20,16 @@ def create_albums(data: AlbumsCreateScheme,
     )
     return album
 
+@router.patch('/', summary='Изменение данных альбома')
+def cahnging_album(data: AlbumChangingScheme, owner_id: dict = Depends(user_db.get_current_user_from_token)):
+    album = album_db.changing_albums(
+        album_id=data.id,
+        owner_id=owner_id['id'], 
+        new_title=data.title,
+        new_desc=data.description)
+    
+    return album
+
 @router.get('/', summary="Получение альбомов")
 def get_albums(current_user: dict = Depends(user_db.get_current_user_from_token)):
     """Поулчение всех альбомов пользователей у авторезированного пользователя"""
@@ -29,12 +39,12 @@ def get_albums(current_user: dict = Depends(user_db.get_current_user_from_token)
     except:
         return f'неправельный токен'
     
-@router.delete('/{albums_id}', summary="Удаление альбома")
-def delete_album(albums_id: int, 
+@router.delete('/{album_id}', summary="Удаление альбома")
+def delete_album(album_id: int, 
                 current_user: dict = Depends(user_db.get_current_user_from_token)):
     
     """Удаление альбома оп id у авторезированно пользователя"""
-    album = album_db.delete_user_album(user_id = current_user['id'], id= albums_id)
+    album = album_db.delete_user_album(user_id = current_user['id'], id= album_id)
     return f'Альбом {album.title} успешно удален'
 #Фото
 @router.post('/{album_id}/photos', response_model=PhotoScheme, summary="Добавление фото к альбому")
@@ -46,12 +56,12 @@ def add_photo(album_id: int,
     photo = photo_db.upload_photo(user_id=current_user['id'], album_id=album_id, file = file)
     return photo
 
-@router.delete('/{albums_id}/photo/{photo_id}', summary="Удаление фото у альбома")
-def delete_photo(albums_id: int,
+@router.delete('/{album_id}/photo/{photo_id}', summary="Удаление фото у альбома")
+def delete_photo(album_id: int,
                  photo_id:int,
                  current_user: dict = Depends(user_db.get_current_user_from_token)):
     """Удаление фото по id у авторезированного пользователя"""
-    photo_db.delete_photo(photo_id=photo_id, album_id=albums_id, user_id=current_user['id'])
+    photo_db.delete_photo(photo_id=photo_id, album_id=album_id, user_id=current_user['id'])
     return f'Фото с id {photo_id} удалено'
 
 
@@ -86,13 +96,13 @@ def get_all_shared_albums(current_user: dict = Depends(user_db.get_current_user_
     albums = album_db.get_all_shared_album(shared_user_id=current_user['id'])
     return albums
 
-@router.post('/{albums_id}/share', summary="Поделиться альбомом")
+@router.post('/{album_id}/share', summary="Поделиться альбомом")
 def set_share_album(shared_user_id: int, 
-                albums_id: int, 
+                album_id: int, 
                 current_user: dict = Depends(user_db.get_current_user_from_token)):
     """Поделится альбомом с другим пользователем по id альбома и id пользователя"""
-    album_db.shared_album(shared_album_id=albums_id, shared_user_id=shared_user_id, ownre_id=current_user['id'])
-    return f'Альбом с id - {albums_id} для пользователя {shared_user_id} успешно присвоен'
+    album_db.shared_album(shared_album_id=album_id, shared_user_id=shared_user_id, ownre_id=current_user['id'])
+    return f'Альбом с id - {album_id} для пользователя {shared_user_id} успешно присвоен'
 
 
 @router.get('/{album_id}/shared-users', summary='Вывод пользователей общего альбома')

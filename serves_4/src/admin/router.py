@@ -2,8 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import APIRouter, Depends
-from src.admin.services import db, user
-from src.auth.services import user_db
+from src.admin.services import db, admin
 
 router = APIRouter(prefix='/admin', tags = ['DEBUG'])
 
@@ -14,15 +13,20 @@ def drop_all():
     db.create_model()
     return f'Таблицы пересозданы'
 
-@router.get('/all_users', summary='Вывод всех пользователей')
+@router.get('/users/all_users', summary='Вывод всех пользователей')
 def all_users():
     """Вывод всех пользователей"""
-    users = user_db.get_all_users()
+    users = admin.get_all_users()
     return users
 
+@router.get('/users/{users_login}', summary= 'Получение пользователя по логину')
+def get_user_by_login(users_login: str):
+    user = admin.get_user_by_login(login=users_login)
+    return user
 
-@router.post('/change_pass')
-def change_pass(new_pass:str, old_pass:str, current_user: dict = Depends(user_db.get_current_user_from_token)):
-    
-    change = user.change_pass(user_login=current_user['login'] ,new_password=new_pass, old_password=old_pass, user_id=current_user['id'])
-    return change
+@router.delete('/users/{users_id}', summary='Удалить пользователя по id')
+def delete_acc_by_id(users_id: int):
+    """Удаление аккаунта пользователя по id"""
+
+    user = admin.delete_acc_by_id(id = users_id)
+    return user

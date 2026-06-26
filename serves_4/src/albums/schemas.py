@@ -6,6 +6,13 @@ class AlbumsCreateScheme(BaseModel):
     title: str
     description: str | None = None
 
+
+class AlbumChangingScheme(BaseModel):
+    id: int
+    title: str | None = None
+    description: str | None = None
+
+
 class GetAlbums(BaseModel):
     id: int
     title: str 

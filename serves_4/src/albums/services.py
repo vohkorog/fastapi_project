@@ -250,3 +250,22 @@ class album_db:
                     }
                     for user in users
                 ]
+            
+    @staticmethod
+    def changing_albums(album_id: int, owner_id: int, new_title: str | None = None, new_desc: str | None = None):
+        album = album_db.get_album(user_id=owner_id, album_id=album_id)
+        if not album:
+            return f'Альбом не найден'
+        
+        with session_factory() as session:
+            album = session.get(AlbumModel, album_id)
+            if new_title is not None:
+                album.title = new_title
+            if new_desc is not None: 
+                album.description = new_desc
+            session.commit()
+
+            result =  {"title" : album.title,
+                    "description" : album.description}
+            
+        return result
