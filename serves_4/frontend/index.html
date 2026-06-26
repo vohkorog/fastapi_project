@@ -97,6 +97,34 @@ body {
   outline: none; transition: border-color 0.15s;
 }
 .form-input:focus { border-color: var(--accent); }
+.form-input:disabled {
+  background: var(--bg);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.password-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.password-wrapper .form-input {
+  flex: 1;
+}
+.password-wrapper .btn-icon {
+  padding: 7px 10px;
+  font-size: 16px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.password-wrapper .btn-icon:hover {
+  border-color: var(--border-hover);
+  background: var(--bg);
+}
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -115,8 +143,9 @@ body {
 .btn-danger:hover { background: #fee2e2; }
 .btn-full { width: 100%; }
 .btn-sm { padding: 7px 12px; font-size: 13px; }
-.btn-icon { padding: 7px; border-radius: var(--radius-sm);}
-.btn-mrg {margin-bottom: 24px;}
+.btn-icon { padding: 7px 10px; border-radius: var(--radius-sm); font-size: 16px; background: var(--surface); border: 1px solid var(--border); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.btn-icon:hover { border-color: var(--border-hover); background: var(--bg); }
+
 .error-msg {
   background: var(--danger-light); color: var(--danger);
   border: 1px solid #fca5a5; border-radius: var(--radius-sm);
@@ -124,6 +153,13 @@ body {
   display: none;
 }
 .error-msg.show { display: block; }
+.success-msg {
+  background: var(--success); color: #fff;
+  border: 1px solid var(--success); border-radius: var(--radius-sm);
+  padding: 8px 12px; font-size: 13px; margin-bottom: 1rem;
+  display: none;
+}
+.success-msg.show { display: block; }
 
 /* ── APP SHELL ── */
 #page-app { flex-direction: column; }
@@ -175,6 +211,7 @@ body {
 }
 .section-title:hover { opacity: 0.7; }
 .section-title.editable::after {
+  content: ' ✏️';
   font-size: 14px;
   opacity: 0.5;
 }
@@ -189,6 +226,7 @@ body {
 }
 .section-desc:hover { opacity: 0.7; }
 .section-desc.editable::after {
+  content: ' ✏️';
   font-size: 12px;
   opacity: 0.5;
 }
@@ -593,56 +631,46 @@ body {
   </div>
 </div>
 
-<!-- Profile Modal (изменение пароля) -->
+<!-- Profile Modal -->
 <div class="modal-overlay" id="modal-profile">
   <div class="modal">
     <div class="modal-title">👤 Настройки профиля</div>
     
     <div class="share-info">
-      Пользователь: <strong id="profile-username">username</strong>
+      Пользователь: <strong id="profile-username-display">username</strong>
       <br>
-      Email: <strong id="profile-email">email@example.com</strong>
+      Email: <strong id="profile-email-display">email@example.com</strong>
     </div>
 
     <div style="margin-top: 1rem;">
       <div class="form-group">
-        <label class="form-label">Текущий пароль</label>
-        <input class="form-input" id="profile-old-password" type="password" placeholder="Введите текущий пароль" />
+        <label class="form-label">Логин</label>
+        <input class="form-input" id="profile-login" type="text" disabled />
       </div>
       <div class="form-group">
-        <label class="form-label">Новый пароль</label>
-        <input class="form-input" id="profile-new-password" type="password" placeholder="Введите новый пароль" />
+        <label class="form-label">Email</label>
+        <input class="form-input" id="profile-email" type="email" disabled />
       </div>
       <div class="form-group">
-        <label class="form-label">Подтверждение нового пароля</label>
-        <input class="form-input" id="profile-confirm-password" type="password" placeholder="Подтвердите новый пароль" />
+        <label class="form-label">Пароль</label>
+        <div class="password-wrapper">
+          <input class="form-input" id="profile-password" type="password" value="••••••••" disabled />
+          <button class="btn-icon" onclick="openChangePassModal()" title="Изменить пароль">⚙️</button>
+        </div>
       </div>
     </div>
 
-    <div id="profile-error" class="error-msg"></div>
-    <div id="profile-success" class="error-msg" style="background:var(--success);color:#fff;border-color:var(--success);display:none;"></div>
-    <div>
-      <button class="btn btn-primary">Изменить пароль2</button>
-    </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-profile')">Отмена</button>
-      <button class="btn btn-primary" onclick="changePassword()">Изменить пароль</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-profile')">Закрыть</button>
     </div>
   </div>
 </div>
 
-
-<!-- Changing Pass Modal (изменение пароля) -->
-<div class="modal-overlay" id="changing-pass-modal">
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="modal-edit-pass">
   <div class="modal">
-    <div class="modal-title">👤 Настройки профиля</div>
+    <div class="modal-title">🔑 Смена пароля</div>
     
-    <div class="share-info">
-      Пользователь: <strong id="profile-username">username</strong>
-      <br>
-      Email: <strong id="profile-email">email@example.com</strong>
-    </div>
-
     <div style="margin-top: 1rem;">
       <div class="form-group">
         <label class="form-label">Текущий пароль</label>
@@ -658,13 +686,11 @@ body {
       </div>
     </div>
 
-    <div id="profile-error" class="error-msg"></div>
-    <div id="profile-success" class="error-msg" style="background:var(--success);color:#fff;border-color:var(--success);display:none;"></div>
-    <div>
-      <button class="btn btn-primary">Изменить пароль2</button>
-    </div>
+    <div id="pass-error" class="error-msg"></div>
+    <div id="pass-success" class="success-msg"></div>
+    
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-profile')">Отмена</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-pass')">Отмена</button>
       <button class="btn btn-primary" onclick="changePassword()">Изменить пароль</button>
     </div>
   </div>
@@ -674,7 +700,7 @@ body {
 <div class="modal-overlay" id="modal-share">
   <div class="modal">
     <div class="modal-title">Поделиться альбомом</div>
-      <button class="btn btn-secondary btn-sm btn-mrg" id="btn-manage-shared" onclick="openManageSharedModal()" style="display:none">👥 Управление доступом</button>
+    <button class="btn btn-secondary btn-sm" id="btn-manage-shared" onclick="openManageSharedModal()" style="display:none">👥 Управление доступом</button>
     <div id="share-give">
       <div class="share-info">
         Введите ID пользователя, которому хотите открыть доступ к альбому «<span id="share-album-name"></span>».
@@ -830,7 +856,7 @@ function enterApp() {
   goAlbums();
 }
 
-// ── PROFILE (изменение пароля) ────────────────────
+// ── PROFILE (отображение данных и смена пароля) ──
 
 function openProfileModal() {
   if (!currentUser) {
@@ -838,31 +864,43 @@ function openProfileModal() {
     return;
   }
 
-  document.getElementById('profile-username').textContent = currentUser.username || 'Неизвестно';
-  document.getElementById('profile-email').textContent = currentUser.email || 'Не указан';
-
-  document.getElementById('profile-old-password').value = '';
-  document.getElementById('profile-new-password').value = '';
-  document.getElementById('profile-confirm-password').value = '';
-
-  const errEl = document.getElementById('profile-error');
-  errEl.classList.remove('show');
-  errEl.textContent = '';
-  
-  const successEl = document.getElementById('profile-success');
-  successEl.style.display = 'none';
-  successEl.textContent = '';
+  // Заполняем информацию о пользователе
+  document.getElementById('profile-username-display').textContent = currentUser.username || 'Неизвестно';
+  document.getElementById('profile-email-display').textContent = currentUser.email || 'Не указан';
+  document.getElementById('profile-login').value = currentUser.username || '';
+  document.getElementById('profile-email').value = currentUser.email || '';
 
   openModal('modal-profile');
 }
 
+function openChangePassModal() {
+  // Закрываем профиль и открываем окно смены пароля
+  closeModal('modal-profile');
+  
+  // Очищаем поля
+  document.getElementById('profile-old-password').value = '';
+  document.getElementById('profile-new-password').value = '';
+  document.getElementById('profile-confirm-password').value = '';
+  
+  // Скрываем сообщения
+  const errEl = document.getElementById('pass-error');
+  errEl.classList.remove('show');
+  errEl.textContent = '';
+  
+  const successEl = document.getElementById('pass-success');
+  successEl.classList.remove('show');
+  successEl.textContent = '';
+
+  openModal('modal-edit-pass');
+}
+
 async function changePassword() {
-  const errEl = document.getElementById('profile-error');
-  const successEl = document.getElementById('profile-success');
+  const errEl = document.getElementById('pass-error');
+  const successEl = document.getElementById('pass-success');
   
   errEl.classList.remove('show');
   errEl.textContent = '';
-  successEl.style.display = 'none';
+  successEl.classList.remove('show');
   successEl.textContent = '';
 
   const oldPassword = document.getElementById('profile-old-password').value;
@@ -909,12 +947,14 @@ async function changePassword() {
     avatar.textContent = (currentUser.username[0] || 'U').toUpperCase();
 
     successEl.textContent = 'Пароль успешно изменён!';
-    successEl.style.display = 'block';
+    successEl.classList.add('show');
     
     toast('Пароль успешно изменён', 'success');
 
     setTimeout(() => {
-      closeModal('modal-profile');
+      closeModal('modal-edit-pass');
+      // Возвращаемся в профиль
+      openProfileModal();
     }, 1500);
 
   } catch(e) {
